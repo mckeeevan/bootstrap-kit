@@ -65,3 +65,9 @@ Qwen Code's full config surface (verified against qwen-code-docs):
 
 1. **`AGENTS.md`** = single shared root instruction file (Copilot, Qwen, Antigravity). No per-tool root duplication.
 2. **`.agents/skills/`** = single canonical skill location (Antigravity, Qwen, Claude Code). No per-tool skill copies.
+
+## Linter recommendations (added per user request)
+
+- **Scope decision:** the kit *suggests* linters; it never installs or runs them. `lint.py` (the CI gate) stays a **config** gate only — source linting is out of scope.
+- **Data file:** `stacks/linters.yaml` — 20 most common languages (python, javascript, typescript, rust, go, java, csharp, c, cpp, ruby, php, swift, kotlin, scala, dart, elixir, lua, shell, haskell, r) + 6 config-file linters (yaml, dockerfile, terraform, sql, markdown, github-actions).
+- **Consumer:** `setup/doctor.py` (Phase 6) reads this and prints recommendations for the languages a project uses. Non-blocking, advisory only.

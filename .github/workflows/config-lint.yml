@@ -1,0 +1,32 @@
+name: config-lint
+
+on:
+  push:
+    paths:
+      - ".agents/**"
+      - "stacks/**"
+      - "sync/lint.py"
+      - "tests/**"
+      - ".github/workflows/config-lint.yml"
+  pull_request:
+    paths:
+      - ".agents/**"
+      - "stacks/**"
+      - "sync/lint.py"
+      - "tests/**"
+      - ".github/workflows/config-lint.yml"
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install deps
+        run: pip install pyyaml pytest
+      - name: Run lint gate
+        run: python sync/lint.py --root .
+      - name: Run lint tests
+        run: pytest tests/test_lint.py -q

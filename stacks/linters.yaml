@@ -1,0 +1,139 @@
+# Recommended linters and formatters per language.
+#
+# Purpose: a lightweight *suggestion* table. setup/doctor.py reads this and
+# prints recommendations for the languages a project uses. It is NOT a hard
+# gate — the kit never installs or runs these tools, and lint.py (the CI gate)
+# only checks agent config, never source.
+#
+# Schema per language:
+#   linter:    primary static-analysis tool (name)
+#   formatter: code formatter (name), or "same as linter"
+#   install:   how to get it (package manager / cargo / brew / built-in)
+#   note:      one-line rationale or gotcha
+#
+# Keep entries terse. This is data, not prose.
+
+languages:
+  python:
+    linter: Ruff
+    formatter: Ruff format
+    install: "pip install ruff  (or uv tool install ruff)"
+    note: "One tool replaces Flake8 + isort + Black; extremely fast."
+  javascript:
+    linter: ESLint
+    formatter: Prettier
+    install: "npm i -D eslint prettier"
+    note: "Pair with eslint-config-prettier to avoid rule conflicts."
+  typescript:
+    linter: ESLint
+    formatter: Prettier
+    install: "npm i -D eslint prettier typescript-eslint"
+    note: "Use the typescript-eslint parser; Biome is a fast single-tool alternative."
+  rust:
+    linter: Clippy
+    formatter: rustfmt
+    install: "rustup component add clippy rustfmt"
+    note: "cargo clippy + cargo fmt; both ship with the toolchain."
+  go:
+    linter: golangci-lint
+    formatter: gofmt
+    install: "go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest"
+    note: "golangci-lint bundles go vet, staticcheck, errcheck and more."
+  java:
+    linter: SpotBugs
+    formatter: google-java-format
+    install: "Maven/Gradle plugin"
+    note: "Add Checkstyle for style; Error Prone for compile-time bugs."
+  csharp:
+    linter: "Roslyn analyzers"
+    formatter: "dotnet format"
+    install: "built into the .NET SDK"
+    note: "Enable <TreatWarningsAsErrors>; StyleCop.Analyzers for house style."
+  c:
+    linter: clang-tidy
+    formatter: clang-format
+    install: "brew install llvm  (or apt clang-tidy)"
+    note: "Pair with -Wall -Wextra; cppcheck is a good second opinion."
+  cpp:
+    linter: clang-tidy
+    formatter: clang-format
+    install: "brew install llvm"
+    note: "Same toolchain as C; add -Werror and a .clang-tidy config."
+  ruby:
+    linter: RuboCop
+    formatter: RuboCop
+    install: "gem install rubocop"
+    note: "RuboCop handles both lint and format; add rubocop-performance."
+  php:
+    linter: PHPStan
+    formatter: PHP-CS-Fixer
+    install: "composer require --dev phpstan/phpstan friendsofphp/php-cs-fixer"
+    note: "PHPStan for type errors, PHP-CS-Fixer for style."
+  swift:
+    linter: SwiftLint
+    formatter: swift-format
+    install: "brew install swiftlint"
+    note: "swift-format ships with Xcode 15+."
+  kotlin:
+    linter: detekt
+    formatter: ktlint
+    install: "Gradle plugin"
+    note: "ktlint for style, detekt for static analysis."
+  scala:
+    linter: scalafix
+    formatter: scalafmt
+    install: "sbt plugin / coursier"
+    note: "scalafmt for formatting, scalafix for lint rules."
+  dart:
+    linter: "dart analyze"
+    formatter: "dart format"
+    install: "built into the Dart SDK"
+    note: "Add the lints package for a stricter rule set."
+  elixir:
+    linter: Credo
+    formatter: "mix format"
+    install: "mix deps.get (Credo)"
+    note: "mix format is built in; Credo for analysis."
+  lua:
+    linter: luacheck
+    formatter: StyLua
+    install: "brew install luacheck stylua"
+    note: "luacheck for warnings, StyLua for formatting."
+  shell:
+    linter: ShellCheck
+    formatter: shfmt
+    install: "brew install shellcheck shfmt"
+    note: "Run on every .sh; ShellCheck catches most POSIX pitfalls."
+  haskell:
+    linter: hlint
+    formatter: ormolu
+    install: "cabal install hlint ormolu"
+    note: "Always compile with -Wall; hlint for idiomaticity."
+  r:
+    linter: lintr
+    formatter: styler
+    install: "install.packages(c('lintr','styler'))"
+    note: "lintr for style checks, styler for formatting."
+
+# Config/infra files that commonly live in repos and have their own linters.
+# Surfaced alongside the language table when the matching files are present.
+config_files:
+  yaml:
+    linter: yamllint
+    install: "brew install yamllint"
+  dockerfile:
+    linter: hadolint
+    install: "brew install hadolint"
+  terraform:
+    linter: tflint
+    formatter: "terraform fmt"
+    install: "brew install tflint"
+  sql:
+    linter: sqlfluff
+    install: "pip install sqlfluff"
+  markdown:
+    linter: markdownlint
+    install: "npm i -D markdownlint-cli"
+  github-actions:
+    linter: actionlint
+    install: "brew install actionlint"
