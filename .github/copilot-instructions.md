@@ -9,3 +9,30 @@
 - Run the focused test for the file you changed before declaring done.
 - Add a test for any new behaviour; prefer a few focused cases over coverage.
 - Never delete or weaken an existing test to make a build pass.
+
+## quality-checks
+
+# Quality checks
+
+- Never bypass, suppress, or weaken a quality check (pre-commit hook, linter, type checker, test) without explicit user approval.
+- Prohibited without approval: `git commit --no-verify`, `SKIP=<hook>`, `# noqa`, `# type: ignore`, `// @ts-ignore`, `eslint-disable`, `@pytest.mark.skip`, loosening thresholds in config files.
+- When a check fails, fix the code first. If an override is genuinely necessary, present the issue, the alternatives considered, and ask for approval before proceeding.
+- "The check is annoying", "it's faster to skip", and "the code works fine" are not valid reasons.
+- Never delete or weaken an existing test to make a build pass.
+
+## stack-base-coding-practices
+
+# Coding practices
+
+- Solve the problem with the least code and complexity that works. No premature optimization, no speculative features.
+- Prefer standard library and widely-accepted patterns. Introduce a third-party dependency only when it is the industry standard for the task.
+- Make the minimum change required. Do not refactor, reformat, or "clean up" code that the task does not touch.
+- Integrate new logic into the existing structure rather than replacing working blocks.
+- Verify facts that could be version-dependent (APIs, library behavior, config syntax) with tools or docs instead of relying on memory.
+- Explain the *why* behind non-obvious decisions in one or two sentences.
+
+## On-demand
+
+- stack-base-commenting: When and how to comment code: explain why, not what.
+
+- stack-base-testing: Unit test quality standards: falsifiable assertions, no coverage theater.

@@ -1,0 +1,39 @@
+---
+name: commit
+description: "Commit a verified change: review the diff, group it logically, write the message, and commit to the current branch."
+---
+
+# Commit
+
+Turn a verified change into one or more clean commits.
+
+## Inputs
+
+- The verified change (from `verify-code` or the user's "commit it").
+- The changes file, if one exists — it is the source for the commit body.
+
+## Procedure
+
+1. **Review the diff.** Read every changed file. Confirm nothing unverified,
+   debug, or secret-bearing is staged. If you find a secret, stop and report —
+   do not commit it.
+2. **Group logically.** One logical change per commit. If the diff contains
+   two unrelated changes, split them (e.g. `git add -p`) and commit separately.
+   If splitting is impractical, say so and commit as one with a body that
+   distinguishes the parts.
+3. **Write the message.**
+   - Subject: imperative, under 72 characters, no trailing period.
+   - Body: bullets of notable changes; a short rationale when non-obvious.
+   - Every line ≤ 80 characters.
+   - Include the Co-authored-by trailer when an agent contributed.
+4. **Commit to the current branch.** Do not create a branch on your own
+   initiative. If the current branch is `main` or `staging`, stop and ask.
+5. **Let the hooks run.** Never `--no-verify`, never `SKIP=`. If a hook fails,
+   fix the code and re-commit; overriding requires explicit user approval per
+   the quality-checks rule.
+
+## Guard rails
+
+- Never commit work-in-progress that fails its own tests.
+- Never amend or rebase a commit the user has already seen, without asking.
+- If the diff is empty, say so — do not create an empty commit.

@@ -10,10 +10,105 @@
 - Add a test for any new behaviour; prefer a few focused cases over coverage.
 - Never delete or weaken an existing test to make a build pass.
 
-## python (globs: *.py, *_test.py)
+## quality-checks
+
+# Quality checks
+
+- Never bypass, suppress, or weaken a quality check (pre-commit hook, linter, type checker, test) without explicit user approval.
+- Prohibited without approval: `git commit --no-verify`, `SKIP=<hook>`, `# noqa`, `# type: ignore`, `// @ts-ignore`, `eslint-disable`, `@pytest.mark.skip`, loosening thresholds in config files.
+- When a check fails, fix the code first. If an override is genuinely necessary, present the issue, the alternatives considered, and ask for approval before proceeding.
+- "The check is annoying", "it's faster to skip", and "the code works fine" are not valid reasons.
+- Never delete or weaken an existing test to make a build pass.
+
+## stack-base-coding-practices
+
+# Coding practices
+
+- Solve the problem with the least code and complexity that works. No premature optimization, no speculative features.
+- Prefer standard library and widely-accepted patterns. Introduce a third-party dependency only when it is the industry standard for the task.
+- Make the minimum change required. Do not refactor, reformat, or "clean up" code that the task does not touch.
+- Integrate new logic into the existing structure rather than replacing working blocks.
+- Verify facts that could be version-dependent (APIs, library behavior, config syntax) with tools or docs instead of relying on memory.
+- Explain the *why* behind non-obvious decisions in one or two sentences.
+
+## stack-base-markdown (globs: *.md)
+
+# Markdown
+
+- Use H2/H3 for structure; reserve H1 for the document title (one per file).
+- Fenced code blocks always declare a language.
+- Tables for structured comparisons; bullet lists for anything enumerable.
+- Keep lines under 80 characters where practical.
+- Prefer short imperative sentences in instruction-style documents; state each rule once, clearly.
+
+## stack-python-fastapi-api-authorization (globs: *.py)
+
+# API authorization
+
+- Authenticate at the route boundary (dependency), never inside handler bodies.
+- Authorization is per-resource: after loading an entity, verify the caller may act on *that* entity. A valid token is not a valid owner.
+- Deny by default. If ownership/role cannot be established, return 403/404 — never fall through to the happy path.
+- Never trust client-supplied identity (user IDs in path or body) without cross-checking it against the authenticated principal.
+- Test the negative path: a test where user A requests user B's resource must assert 403/404.
+
+## stack-python-fastapi-fastapi-transactions (globs: *.py)
+
+# FastAPI transactions
+
+- Route handlers own the unit of work: open the session/transaction in the handler (or a dependency), commit on success, roll back on any exception. Services receive the session; they never open or commit one.
+- Never commit inside a service function. A service that commits makes the handler's rollback path dead code.
+- Never mix a long-running external call (HTTP, queue publish) inside an open transaction. Commit first, then call out; a slow dependency holds locks and connections.
+- Read-only endpoints do not need a commit, but they still need a close; use the same dependency so the pattern is uniform.
+- When a handler must publish an event after committing, publish *after* the commit — an event for a rolled-back write is a lie.
+
+## stack-python-fastapi-python (globs: *.py, *_test.py)
 
 # Python
 
 - Target the project's declared Python version; no version-gated hacks.
-- Use type annotations on public functions.
+- Use type annotations on public functions; prefer `from __future__ import annotations` where the project does.
 - Prefer `pathlib.Path` over string paths.
+- Raise specific exceptions with a message; catch the narrowest exception that makes sense.
+- Use `dataclass`/`pydantic` models for structured data crossing module boundaries, not bare dicts.
+- Tests live in `tests/` mirroring the source layout; name files `test_<module>.py`.
+
+## stack-base-commenting
+
+# Commenting
+
+- Default: no comment. If a better name makes the code self-explanatory, rename instead of commenting.
+- Comment only to explain *why*: non-obvious business rules, algorithm choice, external constraints (rate limits, timeouts, API quirks), and regex intent.
+- Never comment what the code already says (`counter++ // increment counter`), and never leave changelog or "modified by" comments.
+- Never comment out dead code; delete it.
+- Use standard markers sparingly: `TODO`, `FIXME`, `HACK`, `NOTE`, `WARNING`, `SECURITY` — each with a concrete reason.
+- Do not name callers or users in comments ("used by the admin panel"); that rots.
+
+## stack-base-testing
+
+# Unit test quality
+
+- A test is only valuable if a wrong implementation would fail it. Before writing a test, ask: would swapping two arguments, deleting a return value, or inverting a condition be caught?
+- Every test function needs at least one real assertion: `assert`, a mock verification (`assert_called_once_with`, `assert_not_called`, ...), or `pytest.raises`. A body that only calls the function under test proves nothing.
+- Prefer `assert_called_once_with(...)` over `assert_called_once()`; use `ANY` only for arguments that are genuinely not the point (log strings, timestamps).
+- `assert_not_called()` is only meaningful when a sibling path *does* call the mock.
+- One behavior per test. Long tests with many mocks usually hide two tests.
+- If the intent is "no exception raised", make that explicit in the test name and a comment — never by accident.
+- Coverage measures lines executed, not behavior verified. Never add hollow assertions to satisfy a scanner; write the better test instead.
+
+## Agent Roles
+
+### reviewer
+
+Reviews a change for conventions, quality, security, and test coverage before it ships. Read-mostly; reports, doesn't rewrite.
+
+### task-planner
+
+Turns validated research into a phased, independently-committable plan with a details file and an implementation prompt.
+
+### task-researcher
+
+Research-only specialist: verifies findings with tools and writes a single research doc per task. Never modifies source code.
+
+### tester
+
+Writes and runs tests for a change: falsifiable assertions, negative paths, full output capture.

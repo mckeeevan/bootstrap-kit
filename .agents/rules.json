@@ -1,76 +1,24 @@
 {
-  "rules": [
+  "entries": [
     {
-      "description": "How to write commit messages in this repo.",
-      "emitted_for": [
-        "claude",
-        "copilot",
-        "antigravity",
-        "qwen",
-        "codex"
+      "include_only": [
+        "core-testing",
+        "quality-checks",
+        "stack-base-coding-practices",
+        "stack-base-commenting",
+        "stack-base-commits",
+        "stack-base-markdown",
+        "stack-base-testing",
+        "stack-python-fastapi-api-authorization",
+        "stack-python-fastapi-fastapi-transactions",
+        "stack-python-fastapi-python"
       ],
-      "globs": null,
-      "name": "commits",
-      "tier_min": "small",
-      "tools": [
-        "claude",
-        "copilot",
-        "antigravity",
-        "qwen",
-        "codex"
-      ],
-      "trigger": "manual"
-    },
-    {
-      "description": "Core testing conventions that apply to every change.",
-      "emitted_for": [
-        "claude",
-        "copilot",
-        "antigravity",
-        "qwen",
-        "codex"
-      ],
-      "globs": null,
-      "name": "core-testing",
-      "tier_min": "small",
-      "tools": [
-        "claude",
-        "copilot",
-        "antigravity",
-        "qwen",
-        "codex"
-      ],
-      "trigger": "always_on"
-    },
-    {
-      "description": "Python conventions for this repo.",
-      "emitted_for": [
-        "claude",
-        "copilot",
-        "antigravity",
-        "qwen",
-        "codex"
-      ],
-      "globs": "*.py, *_test.py",
-      "name": "python",
-      "tier_min": "small",
-      "tools": [
-        "claude",
-        "copilot",
-        "antigravity",
-        "qwen",
-        "codex"
-      ],
-      "trigger": "glob"
+      "path": ".agents/rules"
     }
   ],
-  "tier": "mid",
-  "tools": [
-    "claude",
-    "copilot",
-    "antigravity",
-    "qwen",
-    "codex"
-  ],
-  "version": 1
+  "inherits": [
+    {
+      "path": "~/.config/bootstrap-kit/rules.json"
+    }
+  ]
 }

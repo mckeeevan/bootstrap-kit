@@ -1,40 +1,145 @@
 {
   "entries": {
-    ".agents/rules/commits.md": {
+    ".agents/agents/reviewer.md": {
       "outputs": {
-        ".claude/commands/commits.md": "626908d770e9be79b3d838f06f364fe7c13e423811d017d30617f8d539297385"
+        ".claude/agents/reviewer.md": "ddf0caaf67ea206cba4c1c248a98b3c75f9283d917eab90922bd8a52a357a96c"
       },
-      "source_hash": "ba43ec73e3b14eb4725e8017d6a4491018039887165bcc171dfe825c27aa64db"
+      "source_hash": "9ba68b75c20d4314529491fcd7a2da9489ff2abf36078534fecd18e596ab6839"
+    },
+    ".agents/agents/task-planner.md": {
+      "outputs": {
+        ".claude/agents/task-planner.md": "5790595fef22c2f5113f8464dbfbca61619e464f71cfeef5c738a6856220f386"
+      },
+      "source_hash": "44d2f353308e039d3460cbe70b4006a7eea78d812e227c90820f1d850b60db00"
+    },
+    ".agents/agents/task-researcher.md": {
+      "outputs": {
+        ".claude/agents/task-researcher.md": "901043b3f3e074c274c76ed52dbf1a95227bc84b2fc8059053f01b1a5ebcc04a"
+      },
+      "source_hash": "90d88e93ce08f7be8cf6c22b6514ce5b4d46a489cc0342af9efe5b293c71cf28"
+    },
+    ".agents/agents/tester.md": {
+      "outputs": {
+        ".claude/agents/tester.md": "be79a2a169ed54e4d3cc575f872a010ff7d001251790568aed63299778a65b2b"
+      },
+      "source_hash": "46d59618617bc9472a2a9b8c0d4adedfa0ea0bfc73b6fcc1639bc085698179fb"
     },
     ".agents/rules/core-testing.md": {
       "outputs": {},
       "source_hash": "bd6ff3c32657cd472d21c3bf9485c696428736f7d67face15a63f6116515d687"
     },
-    ".agents/rules/python.md": {
+    ".agents/rules/quality-checks.md": {
+      "outputs": {},
+      "source_hash": "1552142867c581eb87146fbecaf833b80b3e417485f442351f9922ae8aeb4324"
+    },
+    ".agents/skills/bootstrap/SKILL.md": {
       "outputs": {
-        ".claude/rules/python.md": "32855899814ebb66df80cbd3c5fdffe8af2fc29204e8f3378938e0900cd59224"
+        ".claude/skills/bootstrap/SKILL.md": "61092b1c2dd4e260191adb628f6b25eee66a2596a625fe72f6c8031ff4639f5e",
+        ".claude/skills/commit/SKILL.md": "c9115df652500c61ac9efc630ad8f65878592e75953d5beb7d38f35b25b21ecb",
+        ".claude/skills/implement-plan/SKILL.md": "6124e83bf194c5660917d377d247ded7211d82fedcd97a83066e389acbc15127",
+        ".claude/skills/plan-task/SKILL.md": "9d5effb738ca5ae505d3bb540ead3f1767b9f47398a08bc4afda50b461fc93c9",
+        ".claude/skills/verify-code/SKILL.md": "4e4bb33ac0ad83ef8fb25d0358360362490ab4921acd7594ad0f6e6d24b13845"
       },
-      "source_hash": "94f87bf99a86ed858c6f1e0e33656791eea289a068afc7adfda2f43d94d1d002"
+      "source_hash": "12c1ac763abf0b7b0e48b086d82615be66330b5baef0cca24c9c5f8bb7c8f4b2"
+    },
+    ".agents/skills/commit/SKILL.md": {
+      "outputs": {},
+      "source_hash": "55078016c660d2a45785781b8745b758df5d7c8d7ca96eccb32f9b9d3ef1f3bc"
+    },
+    ".agents/skills/implement-plan/SKILL.md": {
+      "outputs": {},
+      "source_hash": "2bdf97f50d3cb1dbd8b89d230f85538b3ecfc00dd905c3022b3203707ddde4a2"
+    },
+    ".agents/skills/plan-task/SKILL.md": {
+      "outputs": {},
+      "source_hash": "fba058bb5c883fd9bd807f85636bb382035d416b562772d49bbd6c385592ce05"
+    },
+    ".agents/skills/verify-code/SKILL.md": {
+      "outputs": {},
+      "source_hash": "3435d770bb8d9b40abc07f7adcd1453f36ee8dfcba08fa0f9c760567e0b2263f"
     },
     "__aggregate__": {
       "outputs": {
-        ".github/copilot-instructions.md": "3125f0c0264aa44936e9bd54603a48662e8d498c9b9b24a33cc3c520c7c1d1a9",
-        ".github/instructions/python.instructions.md": "6a06ec321e6011a3f7519041692abe8adf4856f03064a8e9f6055d30bae8b97c",
-        ".github/prompts/commits.prompt.md": "626908d770e9be79b3d838f06f364fe7c13e423811d017d30617f8d539297385",
-        "AGENTS.md": "df99735e086a6fcb2da61c7d1467037658ea42d5cc92358e472d419cc1c47604",
-        "CLAUDE.md": "ca0c74e054f2e82bc3f0529efd0dbf9326aad272dec0b9fdd62d7b8e77b3a181",
-        "GEMINI.md": "df99735e086a6fcb2da61c7d1467037658ea42d5cc92358e472d419cc1c47604",
-        "QWEN.md": "df99735e086a6fcb2da61c7d1467037658ea42d5cc92358e472d419cc1c47604"
+        ".claude/commands/stack-base-commits.md": "e25fdd7c51140c809b067adefed4b9ed9481d1febf3ebbd0934cf41eddde84bc",
+        ".claude/rules/stack-base-markdown.md": "b0b5ccc486ad341d88054650441919c76fc35cb328aef40a6b863e2c779802ad",
+        ".claude/rules/stack-python-fastapi-api-authorization.md": "4e896c574445c07c65b85dd98749238b25c8900047db5572d64d7737dd7e76af",
+        ".claude/rules/stack-python-fastapi-fastapi-transactions.md": "88849886602d69e5aaa15c6f709a8ef3cf6a34093930eb6832b203c3a50d776b",
+        ".claude/rules/stack-python-fastapi-python.md": "8211e7729e323c2fb628ccacbe4c1cb5a921475b525e94af1ad697c591b3646b",
+        ".github/agents/reviewer.agent.md": "ddf0caaf67ea206cba4c1c248a98b3c75f9283d917eab90922bd8a52a357a96c",
+        ".github/agents/task-planner.agent.md": "5790595fef22c2f5113f8464dbfbca61619e464f71cfeef5c738a6856220f386",
+        ".github/agents/task-researcher.agent.md": "901043b3f3e074c274c76ed52dbf1a95227bc84b2fc8059053f01b1a5ebcc04a",
+        ".github/agents/tester.agent.md": "be79a2a169ed54e4d3cc575f872a010ff7d001251790568aed63299778a65b2b",
+        ".github/copilot-instructions.md": "07ca8f1f26385fcc58cfa1392c7332fe084207af121054706d50f83573f61c55",
+        ".github/instructions/stack-base-markdown.instructions.md": "661791ce00f05e628934ef430654b59f3592e2992280ffd0d21ebd96c946d21e",
+        ".github/instructions/stack-python-fastapi-api-authorization.instructions.md": "6733460ae9ec7c52972808657aaf676ede1c2716e0daf12f770fcea667d678f7",
+        ".github/instructions/stack-python-fastapi-fastapi-transactions.instructions.md": "478941a6a37870eba658e10871606630b9f560d4e3b40d801a05aaca63503308",
+        ".github/instructions/stack-python-fastapi-python.instructions.md": "bda7cc95f738c3ae6055c9d8a0d9bf7605ff040010953ffa529ed45fd5f2643b",
+        ".github/prompts/stack-base-commits.prompt.md": "e25fdd7c51140c809b067adefed4b9ed9481d1febf3ebbd0934cf41eddde84bc",
+        "AGENTS.md": "cd7c7dfa8517471cc3b1d6f1219dcffbffe153a390a586a1179de50277435730",
+        "CLAUDE.md": "640dc4882e1cf7bf2ef1947afa5d6057009c5c57936e17a6a2988a32e28f0cb9",
+        "GEMINI.md": "cd7c7dfa8517471cc3b1d6f1219dcffbffe153a390a586a1179de50277435730",
+        "QWEN.md": "cd7c7dfa8517471cc3b1d6f1219dcffbffe153a390a586a1179de50277435730"
       },
       "source_hash": ""
+    },
+    "stacks/base/rules/coding-practices.md": {
+      "outputs": {},
+      "source_hash": "72cda73c67ad3f70f7ac9802262b275476810ecfcf28ca8d11c0bbace297c794"
+    },
+    "stacks/base/rules/commenting.md": {
+      "outputs": {},
+      "source_hash": "6cea6c07418c879b6c727cf3772a00bac9f904977bf92aeb62ac2d25e03c642d"
+    },
+    "stacks/base/rules/commits.md": {
+      "outputs": {},
+      "source_hash": "56bc736bc54d7c5eb2a76520150ad8ee5b11b656495d2c531ec92dfae69167e0"
+    },
+    "stacks/base/rules/markdown.md": {
+      "outputs": {},
+      "source_hash": "336e96bab82b04f8513d6daeba7a7c5787ff858da3e6e1c8af43e092ef455560"
+    },
+    "stacks/base/rules/testing.md": {
+      "outputs": {},
+      "source_hash": "71a88ee90a7519e3f4afff0f9620e8a2ca95378adb963e8c7967d5196a740cc8"
+    },
+    "stacks/python-fastapi/rules/api-authorization.md": {
+      "outputs": {},
+      "source_hash": "b8cdc9cfee4a766520a0a280601596014fffba17c181236511ffc50c12cae160"
+    },
+    "stacks/python-fastapi/rules/fastapi-transactions.md": {
+      "outputs": {},
+      "source_hash": "8bd5cbd624a9172b23a2aa5beb7c0fbe85d2257c266733508af1de95a1252f54"
+    },
+    "stacks/python-fastapi/rules/python.md": {
+      "outputs": {},
+      "source_hash": "7495c228b3df4dffd19b83dcc50ce91335b40fdcb8636ecc11f5f67a6a52b402"
     }
   },
   "generated": [
-    ".claude/commands/commits.md",
-    ".claude/rules/python.md",
+    ".claude/agents/reviewer.md",
+    ".claude/agents/task-planner.md",
+    ".claude/agents/task-researcher.md",
+    ".claude/agents/tester.md",
+    ".claude/commands/stack-base-commits.md",
+    ".claude/rules/stack-base-markdown.md",
+    ".claude/rules/stack-python-fastapi-api-authorization.md",
+    ".claude/rules/stack-python-fastapi-fastapi-transactions.md",
+    ".claude/rules/stack-python-fastapi-python.md",
+    ".claude/skills/bootstrap/SKILL.md",
+    ".claude/skills/commit/SKILL.md",
+    ".claude/skills/implement-plan/SKILL.md",
+    ".claude/skills/plan-task/SKILL.md",
+    ".claude/skills/verify-code/SKILL.md",
+    ".github/agents/reviewer.agent.md",
+    ".github/agents/task-planner.agent.md",
+    ".github/agents/task-researcher.agent.md",
+    ".github/agents/tester.agent.md",
     ".github/copilot-instructions.md",
-    ".github/instructions/python.instructions.md",
-    ".github/prompts/commits.prompt.md",
+    ".github/instructions/stack-base-markdown.instructions.md",
+    ".github/instructions/stack-python-fastapi-api-authorization.instructions.md",
+    ".github/instructions/stack-python-fastapi-fastapi-transactions.instructions.md",
+    ".github/instructions/stack-python-fastapi-python.instructions.md",
+    ".github/prompts/stack-base-commits.prompt.md",
     "AGENTS.md",
     "CLAUDE.md",
     "GEMINI.md",

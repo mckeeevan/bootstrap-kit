@@ -1,0 +1,16 @@
+---
+trigger: glob
+description: "Python conventions for this repo."
+globs: "*.py, *_test.py"
+tools: [claude, copilot, antigravity, qwen, codex]
+tier_min: small
+---
+
+# Python
+
+- Target the project's declared Python version; no version-gated hacks.
+- Use type annotations on public functions; prefer `from __future__ import annotations` where the project does.
+- Prefer `pathlib.Path` over string paths.
+- Raise specific exceptions with a message; catch the narrowest exception that makes sense.
+- Use `dataclass`/`pydantic` models for structured data crossing module boundaries, not bare dicts.
+- Tests live in `tests/` mirroring the source layout; name files `test_<module>.py`.

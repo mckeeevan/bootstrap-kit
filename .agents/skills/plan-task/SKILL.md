@@ -1,0 +1,66 @@
+---
+name: plan-task
+description: "Turn a request into an implementation-ready plan: research first, then a phased plan with a details file and a per-phase implementation prompt."
+---
+
+# Plan task
+
+Produce a plan an implementer can execute without guessing. Two stages:
+research, then planning. Never skip research to save time — a plan built on
+assumptions is a bug with extra steps.
+
+## Inputs
+
+- The task description (what to build or change).
+- The project's `state.yaml` structure map, if present.
+
+## Stage 1 — Research
+
+Delegate to the **task-researcher** agent (or adopt the role yourself if
+subagents are unavailable in this tool).
+
+- Research writes to `planning/research/` only. It never touches source code.
+- Every finding must be verified with a tool (read, search, fetch) — no
+  assumptions, no "I believe the API works like this".
+- Evaluate at least two approaches where they genuinely differ; record the
+  trade-offs, then recommend one.
+- End with a **testing strategy**: for unit, integration, and e2e — which
+  existing tests are affected, what new tests are needed, or an explicit
+  reason a level is not needed.
+- Budget discipline: one research doc per task, ≤ ~250 lines, targeted reads
+  over full-file loads, one write per file. If context runs low, finish the
+  current section, append an "Outstanding:" list, and stop — a stopped-but-
+  valid doc beats a truncated one.
+
+## Stage 2 — Planning
+
+Delegate to the **task-planner** agent (or adopt the role).
+
+- **Validate research first.** The research doc must contain verified
+  findings, concrete examples, and the testing strategy. If not, send it back
+  to the researcher. Do not plan on incomplete research.
+- Write three files under `planning/`:
+  - `plans/YYYYMMDD-NN-task.plan.md` — phased checklist with checkboxes.
+  - `details/YYYYMMDD-NN-task-details.md` — full spec per phase.
+  - `prompts/implement-task.prompt.md` — the prompt an implementer receives.
+- **Phase isolation:** every phase must be independently committable — all
+  tests and type checks pass at every phase boundary. A phase must not remove
+  or change a signature without updating every caller (including tests) in the
+  same phase. No forward imports of things a later phase creates.
+- **TDD structure:** for testable languages, each phase is RED (stub +
+  failing test with real assertions) → GREEN (implement, remove the
+  expected-failure marker — that is the only change) → REFACTOR.
+- Line references in the plan are measured (`grep -n`), never estimated.
+- No `{{placeholder}}` markers may remain in finished files.
+
+## Output
+
+A short report: the plan file paths, the phase list, and the success criteria.
+Do not paste plan content into the conversation.
+
+## Guard rails
+
+- Never implement. This skill plans; implementation is `implement-plan`.
+- Multiple distinct tasks → separate plan sets, ordered by dependency.
+- If the user's request is ambiguous in a way that changes the plan's shape,
+  ask one question before researching, not after.

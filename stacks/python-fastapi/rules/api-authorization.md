@@ -1,0 +1,15 @@
+---
+trigger: glob
+description: "API authorization: verify identity and ownership at the route boundary."
+globs: "*.py"
+tools: [claude, copilot, antigravity, qwen, codex]
+tier_min: small
+---
+
+# API authorization
+
+- Authenticate at the route boundary (dependency), never inside handler bodies.
+- Authorization is per-resource: after loading an entity, verify the caller may act on *that* entity. A valid token is not a valid owner.
+- Deny by default. If ownership/role cannot be established, return 403/404 — never fall through to the happy path.
+- Never trust client-supplied identity (user IDs in path or body) without cross-checking it against the authenticated principal.
+- Test the negative path: a test where user A requests user B's resource must assert 403/404.

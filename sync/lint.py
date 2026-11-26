@@ -93,6 +93,62 @@ class LintResult:
 
 # --- core lint -------------------------------------------------------------
 
+def _lint_rule_file(
+    res: LintResult, root: Path, f: Path
+) -> tuple[str, str, list[str], str | None, int] | None:
+    """Run conditions 1,4,5,6,7 on one rule file (root or stack pack).
+
+    Returns (rel, trigger, tools, tier_min, always_on_body_tokens) or None
+    when the file has no frontmatter (already reported as [1])."""
+    rel = f.relative_to(root).as_posix()
+    text = f.read_text(encoding="utf-8")
+    fm, body = parse_frontmatter(text)
+
+    if fm is None:
+        res.errors.append(f"[1] {rel}: missing frontmatter")
+        return None
+
+    # condition 7: unknown keys
+    unknown = set(fm.keys()) - KNOWN_KEYS
+    if unknown:
+        res.errors.append(
+            f"[7] {rel}: unknown frontmatter key(s): {', '.join(sorted(unknown))}"
+        )
+
+    # condition 1: trigger present + recognised
+    trigger = fm.get("trigger")
+    if trigger is None:
+        res.errors.append(f"[1] {rel}: missing 'trigger'")
+        trigger = ""
+    elif trigger not in VALID_TRIGGERS:
+        res.errors.append(
+            f"[1] {rel}: unrecognised trigger '{trigger}' "
+            f"(valid: {', '.join(sorted(VALID_TRIGGERS))})"
+        )
+
+    # condition 5: description
+    if trigger == "model_decision" and not fm.get("description"):
+        res.errors.append(
+            f"[5] {rel}: 'description' required when trigger: model_decision"
+        )
+    elif not fm.get("description"):
+        res.warnings.append(f"[5] {rel}: missing 'description' (warn)")
+
+    # condition 6: globs
+    if trigger == "glob" and not fm.get("globs"):
+        res.errors.append(f"[6] {rel}: 'globs' required when trigger: glob")
+
+    # condition 4: per-file size
+    if len(text.encode("utf-8")) > MAX_FILE_BYTES:
+        res.errors.append(
+            f"[4] {rel}: {len(text.encode('utf-8'))} bytes > {MAX_FILE_BYTES} limit"
+        )
+
+    body_tokens = estimate_tokens(body) if trigger == "always_on" else 0
+    tools = fm.get("tools") or ALL_TOOLS
+    return (rel, str(trigger), list(tools), fm.get("tier_min"), body_tokens)
+
+
 def lint(root: Path, tier: str = "mid", fix: bool = False) -> LintResult:
     res = LintResult()
     agents = root / ".agents"
@@ -109,60 +165,27 @@ def lint(root: Path, tier: str = "mid", fix: bool = False) -> LintResult:
                 )
 
     # --- per-rule checks (1,4,5,6,7) --------------------------------------
+    # Root rules plus every stack pack's rules (same schema, §4.4).
     always_on_tokens = 0
     # (rel, trigger, tools, tier_min)
     rule_rows: list[tuple[str, str, list[str], str | None]] = []
+    rule_files: list[Path] = []
     if rules_dir.is_dir():
-        for f in sorted(rules_dir.glob("*.md")):
-            rel = f.relative_to(root).as_posix()
-            text = f.read_text(encoding="utf-8")
-            fm, body = parse_frontmatter(text)
+        rule_files.extend(sorted(rules_dir.glob("*.md")))
+    stacks_dir = root / "stacks"
+    if stacks_dir.is_dir():
+        for stack_dir in sorted(stacks_dir.iterdir()):
+            s_rules = stack_dir / "rules"
+            if s_rules.is_dir():
+                rule_files.extend(sorted(s_rules.glob("*.md")))
 
-            if fm is None:
-                res.errors.append(f"[1] {rel}: missing frontmatter")
-                continue
-
-            # condition 7: unknown keys
-            unknown = set(fm.keys()) - KNOWN_KEYS
-            if unknown:
-                res.errors.append(
-                    f"[7] {rel}: unknown frontmatter key(s): {', '.join(sorted(unknown))}"
-                )
-
-            # condition 1: trigger present + recognised
-            trigger = fm.get("trigger")
-            if trigger is None:
-                res.errors.append(f"[1] {rel}: missing 'trigger'")
-            elif trigger not in VALID_TRIGGERS:
-                res.errors.append(
-                    f"[1] {rel}: unrecognised trigger '{trigger}' "
-                    f"(valid: {', '.join(sorted(VALID_TRIGGERS))})"
-                )
-
-            # condition 5: description
-            if trigger == "model_decision" and not fm.get("description"):
-                res.errors.append(
-                    f"[5] {rel}: 'description' required when trigger: model_decision"
-                )
-            elif not fm.get("description"):
-                res.warnings.append(f"[5] {rel}: missing 'description' (warn)")
-
-            # condition 6: globs
-            if trigger == "glob" and not fm.get("globs"):
-                res.errors.append(f"[6] {rel}: 'globs' required when trigger: glob")
-
-            # condition 4: per-file size
-            if len(text.encode("utf-8")) > MAX_FILE_BYTES:
-                res.errors.append(
-                    f"[4] {rel}: {len(text.encode('utf-8'))} bytes > {MAX_FILE_BYTES} limit"
-                )
-
-            # aggregate always-on tokens
-            if trigger == "always_on":
-                always_on_tokens += estimate_tokens(body)
-
-            tools = fm.get("tools") or ALL_TOOLS
-            rule_rows.append((rel, str(trigger), list(tools), fm.get("tier_min")))
+    for f in rule_files:
+        row = _lint_rule_file(res, root, f)
+        if row is None:
+            continue
+        rel, trigger, tools, tier_min, body_tokens = row
+        always_on_tokens += body_tokens
+        rule_rows.append((rel, trigger, tools, tier_min))
 
     # condition 4: aggregate always-on budget
     if always_on_tokens > ALWAYS_ON_TOKEN_BUDGET:

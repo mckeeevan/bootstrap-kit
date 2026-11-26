@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """sync.py — canonical → per-tool outputs (work order §6).
 
-Reads the canonical `.agents/` tree + `stacks/` + `profile.yaml`, and emits
-per-tool instruction files **only for the tools listed in the profile**.
+Reads the canonical `.agents/` tree (rules, skills, agents) + `stacks/` +
+`profile.yaml`, and emits per-tool instruction files **only for the tools
+listed in the profile**.
 Updates `sync/manifest.json` (game-scheduler format, §3.2). Idempotent: a
 second run with no changes produces no diff.
 
@@ -16,6 +17,11 @@ Translation table (§6):
 | manual              | .claude/commands/     | .github/prompts/        | skill (slash)    | pointer          |
 | skills/*            | copy verbatim         | skip + report           | copy verbatim    | skip + report    |
 | agents/*            | .claude/agents/       | .github/agents/         | subagents        | role section     |
+
+Stack packs flatten on emit (§4.4): `stacks/<stack>/rules/<name>.md` becomes
+`.agents/rules/stack-<stack>-<name>.md` (Antigravity scans only immediate
+children of `.agents/rules/`), and `.agents/rules.json` registers the
+flattened entries.
 
 Generated files carry a marker so lint.py can detect hand-edits (§5.9).
 `--clean` removes generated files that are no longer emitted (e.g. a tool was
@@ -52,13 +58,28 @@ DEFAULT_PROFILE = {
 @dataclass
 class Rule:
     rel: str            # repo-relative canonical path, e.g. .agents/rules/python.md
-    name: str           # file stem, e.g. python
+    name: str           # emit name; stack rules are flattened: stack-<stack>-<name>
     trigger: str
     description: str
     globs: str
     tools: list[str]
     tier_min: str | None
     body: str           # markdown body (frontmatter stripped)
+    stack: str | None = None
+
+
+@dataclass
+class Skill:
+    rel: str            # e.g. .agents/skills/commit/SKILL.md
+    name: str           # frontmatter name, falling back to the directory name
+    description: str
+
+
+@dataclass
+class Agent:
+    rel: str            # e.g. .agents/agents/tester.md
+    name: str
+    description: str
 
 
 @dataclass
@@ -106,25 +127,82 @@ def load_profile(root: Path) -> Profile:
     return Profile(tools=list(tools), tier=str(tier), raw=raw)
 
 
-def load_rules(root: Path) -> list[Rule]:
-    rules_dir = root / ".agents" / "rules"
+def load_rules(root: Path, profile: Profile) -> list[Rule]:
+    """Load root rules plus the stack packs named in the profile (§4.4).
+
+    Stack rules are flattened on emit: `stacks/<stack>/rules/<name>.md` is
+    emitted as `.agents/rules/stack-<stack>-<name>.md` because Antigravity
+    scans only immediate children of `.agents/rules/`.
+    """
     out: list[Rule] = []
-    if not rules_dir.is_dir():
-        return out
-    for f in sorted(rules_dir.glob("*.md")):
-        text = f.read_text(encoding="utf-8")
-        fm, body = parse_frontmatter(text)
-        if fm is None:
-            continue  # lint.py reports missing frontmatter; sync skips it
-        out.append(Rule(
+    rules_dir = root / ".agents" / "rules"
+    if rules_dir.is_dir():
+        for f in sorted(rules_dir.glob("*.md")):
+            text = f.read_text(encoding="utf-8")
+            fm, body = parse_frontmatter(text)
+            if fm is None:
+                continue  # lint.py reports missing frontmatter; sync skips it
+            out.append(Rule(
+                rel=f.relative_to(root).as_posix(),
+                name=f.stem,
+                trigger=str(fm.get("trigger", "")),
+                description=str(fm.get("description", "")),
+                globs=str(fm.get("globs", "")),
+                tools=list(fm.get("tools") or ALL_TOOLS),
+                tier_min=fm.get("tier_min"),
+                body=body.strip(),
+            ))
+    for stack in profile.raw.get("stacks") or []:
+        stack_dir = root / "stacks" / str(stack) / "rules"
+        if not stack_dir.is_dir():
+            continue
+        for f in sorted(stack_dir.glob("*.md")):
+            text = f.read_text(encoding="utf-8")
+            fm, body = parse_frontmatter(text)
+            if fm is None:
+                continue
+            out.append(Rule(
+                rel=f.relative_to(root).as_posix(),
+                name=f"stack-{stack}-{f.stem}",
+                trigger=str(fm.get("trigger", "")),
+                description=str(fm.get("description", "")),
+                globs=str(fm.get("globs", "")),
+                tools=list(fm.get("tools") or ALL_TOOLS),
+                tier_min=fm.get("tier_min"),
+                body=body.strip(),
+                stack=str(stack),
+            ))
+    return out
+
+
+def load_skills(root: Path) -> list[Skill]:
+    skills_dir = root / ".agents" / "skills"
+    if not skills_dir.is_dir():
+        return []
+    out: list[Skill] = []
+    for f in sorted(skills_dir.glob("*/SKILL.md")):
+        fm, _ = parse_frontmatter(f.read_text(encoding="utf-8"))
+        fm = fm or {}
+        out.append(Skill(
             rel=f.relative_to(root).as_posix(),
-            name=f.stem,
-            trigger=str(fm.get("trigger", "")),
+            name=str(fm.get("name") or f.parent.name),
             description=str(fm.get("description", "")),
-            globs=str(fm.get("globs", "")),
-            tools=list(fm.get("tools") or ALL_TOOLS),
-            tier_min=fm.get("tier_min"),
-            body=body.strip(),
+        ))
+    return out
+
+
+def load_agents(root: Path) -> list[Agent]:
+    agents_dir = root / ".agents" / "agents"
+    if not agents_dir.is_dir():
+        return []
+    out: list[Agent] = []
+    for f in sorted(agents_dir.glob("*.md")):
+        fm, _ = parse_frontmatter(f.read_text(encoding="utf-8"))
+        fm = fm or {}
+        out.append(Agent(
+            rel=f.relative_to(root).as_posix(),
+            name=str(fm.get("name") or f.stem),
+            description=str(fm.get("description", "")),
         ))
     return out
 
@@ -150,7 +228,8 @@ def section(title: str, body: str) -> str:
 
 # --- per-tool emitters -----------------------------------------------------
 
-def emit_claude(root: Path, rules: list[Rule], manifest: dict, written: set[str]) -> None:
+def emit_claude(root: Path, rules: list[Rule], skills: list[Skill], agents: list[Agent],
+                manifest: dict, written: set[str]) -> None:
     always_on = [r for r in rules if r.trigger == "always_on"]
     globs = [r for r in rules if r.trigger == "glob"]
     manual = [r for r in rules if r.trigger == "manual"]
@@ -187,8 +266,21 @@ def emit_claude(root: Path, rules: list[Rule], manifest: dict, written: set[str]
         write(root, rel, content)
         written.add(rel)
 
+    # .claude/skills/<name>/SKILL.md — skills copied verbatim (§4.7).
+    for s in skills:
+        rel = f".claude/skills/{s.name}/SKILL.md"
+        write(root, rel, GENERATED_MARKER + "\n" + (root / s.rel).read_text(encoding="utf-8"))
+        written.add(rel)
 
-def emit_copilot(root: Path, rules: list[Rule], manifest: dict, written: set[str]) -> None:
+    # .claude/agents/<name>.md — subagents copied verbatim (§4.7).
+    for a in agents:
+        rel = f".claude/agents/{a.name}.md"
+        write(root, rel, GENERATED_MARKER + "\n" + (root / a.rel).read_text(encoding="utf-8"))
+        written.add(rel)
+
+
+def emit_copilot(root: Path, rules: list[Rule], skills: list[Skill], agents: list[Agent],
+                 manifest: dict, written: set[str]) -> None:
     always_on = [r for r in rules if r.trigger == "always_on"]
     globs = [r for r in rules if r.trigger == "glob"]
     manual = [r for r in rules if r.trigger == "manual"]
@@ -225,9 +317,21 @@ def emit_copilot(root: Path, rules: list[Rule], manifest: dict, written: set[str
         write(root, rel, content)
         written.add(rel)
 
+    # .github/agents/<name>.agent.md — subagents (§4.7).
+    for a in agents:
+        rel = f".github/agents/{a.name}.agent.md"
+        write(root, rel, GENERATED_MARKER + "\n" + (root / a.rel).read_text(encoding="utf-8"))
+        written.add(rel)
 
-def _agents_md_content(rules: list[Rule]) -> str:
-    """AGENTS.md body — always-on sections + glob/model_decision pass-through."""
+    # Skills: Copilot has no skill mechanism — visible degradation note (§4.8).
+    if skills:
+        print(f"degrade: copilot has no skill support; {len(skills)} skill(s) "
+              f"not emitted ({', '.join(s.name for s in skills)})")
+
+
+def _agents_md_content(rules: list[Rule], agents: list[Agent] | None = None) -> str:
+    """AGENTS.md body — always-on sections + glob/model_decision pass-through
+    + agent role descriptions (§4.7: codex degrades subagents to role sections)."""
     always_on = [r for r in rules if r.trigger == "always_on"]
     globs = [r for r in rules if r.trigger == "glob"]
     model_decision = [r for r in rules if r.trigger == "model_decision"]
@@ -240,26 +344,43 @@ def _agents_md_content(rules: list[Rule]) -> str:
     for r in globs + model_decision:
         extra = f" (globs: {r.globs})" if r.globs else ""
         parts.append(section(f"{r.name}{extra}", r.body))
+    if agents:
+        parts.append("## Agent Roles\n")
+        for a in agents:
+            parts.append(f"### {a.name}\n\n{a.description}\n")
     return "\n".join(parts).rstrip() + "\n"
 
 
-def emit_antigravity(root: Path, rules: list[Rule], manifest: dict, written: set[str]) -> None:
+def emit_antigravity(root: Path, rules: list[Rule], skills: list[Skill], agents: list[Agent],
+                     manifest: dict, written: set[str]) -> None:
     # GEMINI.md — always-on sections + glob/model_decision pass-through.
     # (AGENTS.md is written once by sync() for the union of AGENTS.md tools.)
-    write(root, "GEMINI.md", _agents_md_content(rules))
+    write(root, "GEMINI.md", _agents_md_content(rules, agents))
     written.add("GEMINI.md")
+    # Skills: Antigravity reads .agents/skills/ in place — nothing to copy.
+    # Subagents: no supported mechanism — visible degradation note (§4.8).
+    if agents:
+        print(f"degrade: antigravity has no subagent support; {len(agents)} agent role(s) "
+              f"degraded to role descriptions in AGENTS.md/GEMINI.md")
 
 
-def emit_codex(root: Path, rules: list[Rule], manifest: dict, written: set[str]) -> None:
+def emit_codex(root: Path, rules: list[Rule], skills: list[Skill], agents: list[Agent],
+               manifest: dict, written: set[str]) -> None:
     # Codex reads AGENTS.md, which is written once by sync() for the union of
-    # AGENTS.md-reading tools. Nothing codex-specific to emit.
-    pass
+    # AGENTS.md-reading tools (agent roles included). Nothing codex-specific.
+    # Skills: no supported mechanism — visible degradation note (§4.8).
+    if skills:
+        print(f"degrade: codex has no skill support; {len(skills)} skill(s) not emitted")
 
 
-def emit_qwen(root: Path, rules: list[Rule], manifest: dict, written: set[str]) -> None:
+def emit_qwen(root: Path, rules: list[Rule], skills: list[Skill], agents: list[Agent],
+              manifest: dict, written: set[str]) -> None:
     # QWEN.md — same content as AGENTS.md (Qwen Code reads AGENTS.md).
-    write(root, "QWEN.md", _agents_md_content(rules))
+    write(root, "QWEN.md", _agents_md_content(rules, agents))
     written.add("QWEN.md")
+    # Skills: no supported mechanism — visible degradation note (§4.8).
+    if skills:
+        print(f"degrade: qwen has no skill support; {len(skills)} skill(s) not emitted")
 
 
 # --- manifest + index ------------------------------------------------------
@@ -278,22 +399,11 @@ def write_manifest(root: Path, manifest: dict) -> None:
 
 
 def write_rules_index(root: Path, rules: list[Rule], profile: Profile) -> None:
+    """Write .agents/rules.json in the §4.4 shape: inherits + entries."""
+    include_only = sorted(r.name for r in rules)
     index = {
-        "version": MANIFEST_VERSION,
-        "tier": profile.tier,
-        "tools": profile.tools,
-        "rules": [
-            {
-                "name": r.name,
-                "trigger": r.trigger,
-                "description": r.description,
-                "globs": r.globs or None,
-                "tools": r.tools,
-                "tier_min": r.tier_min,
-                "emitted_for": [t for t in profile.tools if t in r.tools],
-            }
-            for r in rules
-        ],
+        "inherits": [{"path": "~/.config/bootstrap-kit/rules.json"}],
+        "entries": [{"path": ".agents/rules", "include_only": include_only}],
     }
     p = root / ".agents" / "rules.json"
     p.write_text(json.dumps(index, indent=2, sort_keys=True) + "\n", encoding="utf-8")
@@ -303,7 +413,9 @@ def write_rules_index(root: Path, rules: list[Rule], profile: Profile) -> None:
 
 def sync(root: Path, clean: bool = False) -> dict:
     profile = load_profile(root)
-    rules = load_rules(root)
+    rules = load_rules(root, profile)
+    skills = load_skills(root)
+    agents = load_agents(root)
 
     # Filter by tier (rules needing a bigger model than in use are skipped).
     active = [r for r in rules if not tier_excluded(r, profile.tier)]
@@ -328,20 +440,26 @@ def sync(root: Path, clean: bool = False) -> dict:
             continue
         # Rules this tool actually emits (intersection with rule.tools).
         tool_rules = [r for r in active if tool in r.tools]
-        fn(root, tool_rules, manifest, written)
+        fn(root, tool_rules, skills, agents, manifest, written)
 
     # AGENTS.md is read by antigravity, codex, and qwen. Write it once for the
     # union of their rules so the tools don't clobber each other.
     agents_tools = [t for t in profile.tools if t in ("antigravity", "codex", "qwen")]
     if agents_tools:
         union = [r for r in active if any(t in r.tools for t in agents_tools)]
-        write(root, "AGENTS.md", _agents_md_content(union))
+        write(root, "AGENTS.md", _agents_md_content(union, agents))
         written.add("AGENTS.md")
 
-    # Record per-source hashes in the manifest.
+    # Record per-source hashes in the manifest (rules, skills, agents).
     for r in active:
         src_hash = sha256((root / r.rel).read_bytes())
         manifest["entries"][r.rel] = {"source_hash": src_hash, "outputs": {}}
+    for s in skills:
+        src_hash = sha256((root / s.rel).read_bytes())
+        manifest["entries"][s.rel] = {"source_hash": src_hash, "outputs": {}}
+    for a in agents:
+        src_hash = sha256((root / a.rel).read_bytes())
+        manifest["entries"][a.rel] = {"source_hash": src_hash, "outputs": {}}
 
     # Map written files back to their source rule for the manifest.
     for rel in written:
