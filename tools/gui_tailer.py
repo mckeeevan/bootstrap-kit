@@ -140,6 +140,37 @@ def shorten(etype: str, target: str) -> str:
     return target
 
 
+def humanize(text: str, limit: int = 160) -> str:
+    """Make a chat message read like a sentence, not a markdown dump."""
+    t = text
+    t = re.sub(r"```.*?```", " [code] ", t, flags=re.S)  # code blocks
+    t = re.sub(r"`([^`]*)`", r"\1", t)                    # inline code
+    t = re.sub(r"!\[[^\]]*\]\([^)]*\)", "", t)            # images
+    t = re.sub(r"\[([^\]]*)\]\([^)]*\)", r"\1", t)        # links -> label
+    # A message that is mostly a bullet list reads as a dump; collapse it to
+    # the first line plus a count of the rest. (Detected before the markers
+    # are stripped.)
+    raw_lines = [ln.strip() for ln in t.splitlines() if ln.strip()]
+    bullets = [ln for ln in raw_lines
+               if ln.startswith(("-", "*", "•")) or re.match(r"^\d+\.\s", ln)]
+    if len(bullets) >= 3:
+        lead = next((ln for ln in raw_lines if ln not in bullets), "")
+        lead = re.sub(r"[*_#>|]+", " ", lead)
+        lead = re.sub(r"\s+", " ", lead).strip()
+        t = (lead + " " if lead else "") + f"({len(bullets)} items)"
+    else:
+        t = re.sub(r"[*_#>|]+", " ", t)                   # emphasis/bullets
+        t = re.sub(r"\s+", " ", t).strip()
+
+    if len(t) > limit:
+        cut = t[:limit]
+        # clip at the last real space so we don't cut mid-word
+        if " " in cut:
+            cut = cut.rsplit(" ", 1)[0]
+        t = cut.rstrip(",;:") + "…"
+    return t
+
+
 def map_event(o: dict, session_id: str):
     """Return a gui event dict for one session event, or None."""
     t = o.get("type")
@@ -166,15 +197,15 @@ def map_event(o: dict, session_id: str):
                 "target": "tool call failed"}
 
     if t == "user.message":
-        content = d.get("content", "")
+        content = str(d.get("content", ""))
         return {**base, "agent": "user", "type": "prompt",
-                "target": str(content)[:200]}
+                "target": humanize(content)}
 
     if t == "assistant.message":
         content = str(d.get("content", ""))
         if len(content) < MIN_MESSAGE_LEN:
             return None  # short narration, not a real update
-        return {**base, "type": "message", "target": content[:200]}
+        return {**base, "type": "message", "target": humanize(content)}
 
     # Turn boundaries are bookkeeping; the feed reads fine without them.
     return None

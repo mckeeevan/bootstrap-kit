@@ -77,6 +77,36 @@ def is_inspect(cmd: str) -> bool:
     return True
 
 
+def humanize(text: str, limit: int = 160) -> str:
+    """Make a chat message read like a sentence, not a markdown dump."""
+    t = text
+    t = re.sub(r"```.*?```", " [code] ", t, flags=re.S)
+    t = re.sub(r"`([^`]*)`", r"\1", t)
+    t = re.sub(r"!\[[^\]]*\]\([^)]*\)", "", t)
+    t = re.sub(r"\[([^\]]*)\]\([^)]*\)", r"\1", t)
+    # A message that is mostly a bullet list reads as a dump; collapse it to
+    # the first line plus a count of the rest. (Detected before the markers
+    # are stripped.)
+    raw_lines = [ln.strip() for ln in t.splitlines() if ln.strip()]
+    bullets = [ln for ln in raw_lines
+               if ln.startswith(("-", "*", "•")) or re.match(r"^\d+\.\s", ln)]
+    if len(bullets) >= 3:
+        lead = next((ln for ln in raw_lines if ln not in bullets), "")
+        lead = re.sub(r"[*_#>|]+", " ", lead)
+        lead = re.sub(r"\s+", " ", lead).strip()
+        t = (lead + " " if lead else "") + f"({len(bullets)} items)"
+    else:
+        t = re.sub(r"[*_#>|]+", " ", t)
+        t = re.sub(r"\s+", " ", t).strip()
+
+    if len(t) > limit:
+        cut = t[:limit]
+        if " " in cut:
+            cut = cut.rsplit(" ", 1)[0]
+        t = cut.rstrip(",;:") + "…"
+    return t
+
+
 def shorten(etype: str, target: str) -> str:
     """Make targets read like names, not paths or raw commands."""
     if not target:
@@ -176,7 +206,7 @@ def handle(payload: dict) -> None:
     if event_name in ("UserPromptSubmit", "userPromptSubmitted"):
         prompt = get(payload, "prompt", default="")
         append_event(gui, {"t": now_iso(), "agent": "user", "type": "prompt",
-                           "target": str(prompt)[:200], "auto": True})
+                           "target": humanize(str(prompt)), "auto": True})
         return
 
     # --- subagents ---------------------------------------------------------
