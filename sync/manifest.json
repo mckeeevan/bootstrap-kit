@@ -1,0 +1,44 @@
+{
+  "entries": {
+    ".agents/rules/commits.md": {
+      "outputs": {
+        ".claude/commands/commits.md": "626908d770e9be79b3d838f06f364fe7c13e423811d017d30617f8d539297385"
+      },
+      "source_hash": "ba43ec73e3b14eb4725e8017d6a4491018039887165bcc171dfe825c27aa64db"
+    },
+    ".agents/rules/core-testing.md": {
+      "outputs": {},
+      "source_hash": "bd6ff3c32657cd472d21c3bf9485c696428736f7d67face15a63f6116515d687"
+    },
+    ".agents/rules/python.md": {
+      "outputs": {
+        ".claude/rules/python.md": "32855899814ebb66df80cbd3c5fdffe8af2fc29204e8f3378938e0900cd59224"
+      },
+      "source_hash": "94f87bf99a86ed858c6f1e0e33656791eea289a068afc7adfda2f43d94d1d002"
+    },
+    "__aggregate__": {
+      "outputs": {
+        ".github/copilot-instructions.md": "3125f0c0264aa44936e9bd54603a48662e8d498c9b9b24a33cc3c520c7c1d1a9",
+        ".github/instructions/python.instructions.md": "6a06ec321e6011a3f7519041692abe8adf4856f03064a8e9f6055d30bae8b97c",
+        ".github/prompts/commits.prompt.md": "626908d770e9be79b3d838f06f364fe7c13e423811d017d30617f8d539297385",
+        "AGENTS.md": "df99735e086a6fcb2da61c7d1467037658ea42d5cc92358e472d419cc1c47604",
+        "CLAUDE.md": "ca0c74e054f2e82bc3f0529efd0dbf9326aad272dec0b9fdd62d7b8e77b3a181",
+        "GEMINI.md": "df99735e086a6fcb2da61c7d1467037658ea42d5cc92358e472d419cc1c47604",
+        "QWEN.md": "df99735e086a6fcb2da61c7d1467037658ea42d5cc92358e472d419cc1c47604"
+      },
+      "source_hash": ""
+    }
+  },
+  "generated": [
+    ".claude/commands/commits.md",
+    ".claude/rules/python.md",
+    ".github/copilot-instructions.md",
+    ".github/instructions/python.instructions.md",
+    ".github/prompts/commits.prompt.md",
+    "AGENTS.md",
+    "CLAUDE.md",
+    "GEMINI.md",
+    "QWEN.md"
+  ],
+  "version": 1
+}

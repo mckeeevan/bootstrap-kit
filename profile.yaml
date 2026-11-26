@@ -1,0 +1,21 @@
+# bootstrap-kit profile — read by sync/sync.py and sync/lint.py.
+#
+# tools: which agent tools to emit generated files for. sync.py emits ONLY
+# for these; lint.py checks only these.
+tools: [claude, copilot, antigravity, qwen, codex]
+
+# model: the model tier the rules are written for. Rules with tier_min above
+# this tier are skipped (and reported in the coverage report).
+model:
+  name: claude-sonnet
+  tier: mid            # small | mid | frontier
+  context_budget: 200000
+
+# viewer: claude-gui dependency pin (Phase 5).
+viewer:
+  mode: pinned
+  guard: sha256
+  pinned_ref: 635e442
+
+# stacks: which stacks/ linter configs to install (Phase 2).
+stacks: [base, python-fastapi]
