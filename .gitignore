@@ -1,2 +1,5 @@
 __pycache__/
 *.pyc
+
+# claude-gui runtime state (live viewer feed, not source)
+.claude-gui/

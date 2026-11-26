@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "hooks": {
+    "postToolUse": [
+      { "type": "command", "bash": "python3 hooks/copilot_gui_hook.py", "timeoutSec": 10 }
+    ],
+    "postToolUseFailure": [
+      { "type": "command", "bash": "python3 hooks/copilot_gui_hook.py", "timeoutSec": 10 }
+    ],
+    "userPromptSubmitted": [
+      { "type": "command", "bash": "python3 hooks/copilot_gui_hook.py", "timeoutSec": 10 }
+    ],
+    "subagentStart": [
+      { "type": "command", "bash": "python3 hooks/copilot_gui_hook.py", "timeoutSec": 10 }
+    ],
+    "subagentStop": [
+      { "type": "command", "bash": "python3 hooks/copilot_gui_hook.py", "timeoutSec": 10 }
+    ],
+    "agentStop": [
+      { "type": "command", "bash": "python3 hooks/copilot_gui_hook.py", "timeoutSec": 10 }
+    ]
+  }
+}
