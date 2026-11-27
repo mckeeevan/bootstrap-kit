@@ -15,7 +15,7 @@ model:
 viewer:
   mode: pinned
   guard: sha256
-  pinned_ref: 268efc7
+  pinned_ref: b78ec88
 
 # stacks: which stacks/ linter configs to install (Phase 2).
 stacks: [base, python-fastapi]

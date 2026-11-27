@@ -303,6 +303,65 @@ def collect_coverage(project: Path, gui: Path, max_age: int = 900) -> bool:
     return True
 
 
+# File extensions that are not code: docs, config, data. A part whose files are
+# all of these needs no tests, so the viewer shows it as "no tests needed"
+# instead of "no tests" and keeps it out of the coverage bar.
+NON_CODE_EXTS = {
+    ".md", ".markdown", ".rst", ".txt", ".yaml", ".yml", ".json", ".toml",
+    ".ini", ".cfg", ".conf", ".csv", ".xml", ".html", ".css", ".svg",
+}
+
+
+def _iter_parts(structure):
+    """Yield every part dict in the structure tree, depth-first."""
+    for node in structure or []:
+        if not isinstance(node, dict):
+            continue
+        yield node
+        yield from _iter_parts(node.get("children"))
+
+
+def collect_parts(project: Path, gui: Path) -> bool:
+    """Write .claude-gui/parts.json: for each structure part, the real files its
+    ``paths`` globs resolve to, and whether the part is exempt from tests (all of
+    its files are non-code). Generic — works for any project's state.yaml.
+    """
+    state_file = gui / "state.yaml"
+    if not state_file.is_file():
+        return False
+    try:
+        import yaml
+        state = yaml.safe_load(state_file.read_text(encoding="utf-8")) or {}
+    except Exception:
+        return False
+    parts = {}
+    for node in _iter_parts(state.get("structure")):
+        pid = node.get("id")
+        paths = node.get("paths")
+        if not pid or not isinstance(paths, list):
+            continue
+        files = set()
+        for pat in paths:
+            if not isinstance(pat, str):
+                continue
+            for hit in project.glob(pat):
+                if not hit.is_file():
+                    continue
+                rel = hit.relative_to(project).as_posix()
+                if "__pycache__" in rel or rel.endswith(".pyc"):
+                    continue
+                files.add(rel)
+        if not files:
+            continue
+        exempt = all(Path(f).suffix.lower() in NON_CODE_EXTS for f in files)
+        parts[str(pid)] = {"files": sorted(files), "exempt": exempt}
+    if not parts:
+        return False
+    out = {"t": now_iso(), "parts": parts}
+    (gui / "parts.json").write_text(json.dumps(out), encoding="utf-8")
+    return True
+
+
 def map_event(o: dict, session_id: str, pending: dict, project: Path = None, gui: Path = None):
     """Return a gui event dict for one session event, or None.
 
@@ -402,9 +461,31 @@ def main() -> int:
             offset = 0
 
     pending = {}  # toolCallId -> start info for in-flight test commands
+    project = Path(args.project).expanduser()
+    state_yaml = gui / "state.yaml"
+    last_parts_mtime = None
+    last_cov_check = 0.0  # re-check coverage periodically, not only on test tool calls
 
     while True:
         try:
+            # Re-classify parts when the structure changes (cheap: read + glob).
+            try:
+                mtime = state_yaml.stat().st_mtime if state_yaml.is_file() else None
+                if mtime != last_parts_mtime:
+                    last_parts_mtime = mtime
+                    collect_parts(project, gui)
+            except Exception:
+                pass
+            # A coverage report can appear outside a test tool call (e.g. run
+            # directly in the shell); re-check periodically so the gui state
+            # self-heals instead of going stale.
+            now = time.time()
+            if now - last_cov_check >= 15:
+                last_cov_check = now
+                try:
+                    collect_coverage(project, gui)
+                except Exception:
+                    pass
             if src.exists():
                 size = src.stat().st_size
                 if size < offset:

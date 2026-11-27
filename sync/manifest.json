@@ -26,11 +26,15 @@
     },
     ".agents/rules/core-testing.md": {
       "outputs": {},
-      "source_hash": "bd6ff3c32657cd472d21c3bf9485c696428736f7d67face15a63f6116515d687"
+      "source_hash": "f4f83b51439d3ad342390636c233e03d1c42122e2a7e94f9cefb9fccfc541be3"
     },
     ".agents/rules/quality-checks.md": {
       "outputs": {},
       "source_hash": "1552142867c581eb87146fbecaf833b80b3e417485f442351f9922ae8aeb4324"
+    },
+    ".agents/rules/state-hygiene.md": {
+      "outputs": {},
+      "source_hash": "0b9cb71e0826ea37a47269ff0e288db7b9c3f9a05fda7b4f7d902dd211f7d53d"
     },
     ".agents/skills/bootstrap/SKILL.md": {
       "outputs": {
@@ -69,16 +73,16 @@
         ".github/agents/task-planner.agent.md": "5790595fef22c2f5113f8464dbfbca61619e464f71cfeef5c738a6856220f386",
         ".github/agents/task-researcher.agent.md": "901043b3f3e074c274c76ed52dbf1a95227bc84b2fc8059053f01b1a5ebcc04a",
         ".github/agents/tester.agent.md": "be79a2a169ed54e4d3cc575f872a010ff7d001251790568aed63299778a65b2b",
-        ".github/copilot-instructions.md": "07ca8f1f26385fcc58cfa1392c7332fe084207af121054706d50f83573f61c55",
+        ".github/copilot-instructions.md": "e941b890de693d3572852f2841607129580744c6a1e970685ad0a2d3328c4041",
         ".github/instructions/stack-base-markdown.instructions.md": "661791ce00f05e628934ef430654b59f3592e2992280ffd0d21ebd96c946d21e",
         ".github/instructions/stack-python-fastapi-api-authorization.instructions.md": "6733460ae9ec7c52972808657aaf676ede1c2716e0daf12f770fcea667d678f7",
         ".github/instructions/stack-python-fastapi-fastapi-transactions.instructions.md": "478941a6a37870eba658e10871606630b9f560d4e3b40d801a05aaca63503308",
         ".github/instructions/stack-python-fastapi-python.instructions.md": "bda7cc95f738c3ae6055c9d8a0d9bf7605ff040010953ffa529ed45fd5f2643b",
         ".github/prompts/stack-base-commits.prompt.md": "e25fdd7c51140c809b067adefed4b9ed9481d1febf3ebbd0934cf41eddde84bc",
-        "AGENTS.md": "cd7c7dfa8517471cc3b1d6f1219dcffbffe153a390a586a1179de50277435730",
-        "CLAUDE.md": "640dc4882e1cf7bf2ef1947afa5d6057009c5c57936e17a6a2988a32e28f0cb9",
-        "GEMINI.md": "cd7c7dfa8517471cc3b1d6f1219dcffbffe153a390a586a1179de50277435730",
-        "QWEN.md": "cd7c7dfa8517471cc3b1d6f1219dcffbffe153a390a586a1179de50277435730"
+        "AGENTS.md": "8bd7a7a67087620e6106dbb891b434b204ba48cbadcc02122f5613c92d0112dd",
+        "CLAUDE.md": "e011e0bb468c62a37c61a5956388143e455f6a7fd0ce08db0f81a3fa7512d67b",
+        "GEMINI.md": "8bd7a7a67087620e6106dbb891b434b204ba48cbadcc02122f5613c92d0112dd",
+        "QWEN.md": "8bd7a7a67087620e6106dbb891b434b204ba48cbadcc02122f5613c92d0112dd"
       },
       "source_hash": ""
     },

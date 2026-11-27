@@ -1,0 +1,33 @@
+# bootstrap-kit profile — per-user defaults.
+#
+# Copy this to ~/.config/bootstrap-kit/profile.yaml (or to a project's
+# profile.yaml) and edit it ONCE with your tools + model tier. sync.py,
+# lint.py, bootstrap.py and doctor.py all read it.
+#
+# tools: which agent tools to emit generated files for. sync.py emits ONLY
+# for these; lint.py checks only these. Omit to emit for all supported tools.
+tools: [claude, antigravity, qwen]
+
+# model: the model tier the rules are written for. Rules with tier_min above
+# this tier are skipped (and reported in the coverage report).
+model:
+  name: qwen3.8
+  tier: mid            # small | mid | frontier  (§4.6)
+  context_budget: 128000
+
+# viewer: claude-gui dependency pin.
+#   mode: pinned  — clone claude-gui at pinned_ref (deterministic, recommended)
+#   mode: hooks   — register the events.jsonl hook only (viewer read-only)
+#   guard: off | sha256 — workview guard strictness (enabled at BOOTSTRAP step 6)
+viewer:
+  mode: pinned
+  guard: off
+  pinned_ref: "b78ec88"
+
+# stacks: which stacks/ linter configs to install.
+stacks: [base, python-fastapi]
+
+# sources: the §1 index, machine-readable. bootstrap.py clones from here.
+sources:
+  game_scheduler: https://github.com/bretmckee/game-scheduler/tree/develop
+  claude_gui: https://github.com/mckeeevan/claude-gui/tree/main

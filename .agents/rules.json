@@ -11,7 +11,8 @@
         "stack-base-testing",
         "stack-python-fastapi-api-authorization",
         "stack-python-fastapi-fastapi-transactions",
-        "stack-python-fastapi-python"
+        "stack-python-fastapi-python",
+        "state-hygiene"
       ],
       "path": ".agents/rules"
     }
