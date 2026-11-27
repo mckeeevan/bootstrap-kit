@@ -147,3 +147,16 @@ def test_clone_vendor_requires_source(tmp_path):
     profile = bootstrap.load_profile(root)
     with pytest.raises(SystemExit):
         bootstrap.clone_vendor(root, profile)
+
+
+# --- clone_commands: pinned ref is a SHA, not a branch ----------------------
+
+def test_clone_commands_clone_then_checkout(tmp_path):
+    vendor = tmp_path / "vendor" / "claude-gui"
+    clone_cmd, checkout_cmd = bootstrap.clone_commands(
+        "https://github.com/o/r", "abc123", vendor)
+    # A commit SHA cannot be passed to `git clone --branch`; clone the default
+    # branch and check out the exact ref instead.
+    assert clone_cmd == ["git", "clone", "https://github.com/o/r.git", str(vendor)]
+    assert "--branch" not in clone_cmd
+    assert checkout_cmd == ["git", "checkout", "--quiet", "abc123"]

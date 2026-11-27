@@ -85,6 +85,18 @@ def vendor_at_ref(root: Path, pinned_ref: str) -> bool:
         return False
 
 
+def clone_commands(source: str, pinned_ref: str, vendor: Path) -> list[list[str]]:
+    """The git commands to vendor claude-gui at a pinned commit SHA.
+
+    ``pinned_ref`` is a commit SHA, not a branch, so ``git clone --branch``
+    cannot be used. Clone the default branch, then check out the exact ref.
+    """
+    return [
+        ["git", "clone", _repo_url(str(source)), str(vendor)],
+        ["git", "checkout", "--quiet", pinned_ref],
+    ]
+
+
 def clone_vendor(root: Path, profile: sync.Profile) -> str:
     """Clone claude-gui at the pinned ref. Skips if already at the ref."""
     viewer = profile.raw.get("viewer") or {}
@@ -101,11 +113,9 @@ def clone_vendor(root: Path, profile: sync.Profile) -> str:
     vendor.parent.mkdir(parents=True, exist_ok=True)
     if vendor.exists():
         subprocess.run(["rm", "-rf", str(vendor)], check=True)
-    subprocess.run(
-        ["git", "clone", "--depth", "1", "--branch", pinned_ref,
-         _repo_url(str(source)), str(vendor)],
-        check=True,
-    )
+    clone_cmd, checkout_cmd = clone_commands(source, pinned_ref, vendor)
+    subprocess.run(clone_cmd, check=True)
+    subprocess.run(checkout_cmd, cwd=str(vendor), check=True)
     return f"cloned claude-gui at {pinned_ref} -> vendor/claude-gui"
 
 

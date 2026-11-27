@@ -19,3 +19,7 @@ viewer:
 
 # stacks: which stacks/ linter configs to install (Phase 2).
 stacks: [base, python-fastapi]
+
+# sources: the §1 index, machine-readable. bootstrap.py clones from here.
+sources:
+  claude_gui: https://github.com/mckeeevan/claude-gui/tree/main
