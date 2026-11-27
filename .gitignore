@@ -1,5 +1,7 @@
 __pycache__/
 *.pyc
+.coverage
+coverage.json
 
 # claude-gui runtime state (live viewer feed, not source)
 .claude-gui/

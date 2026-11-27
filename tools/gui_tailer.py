@@ -53,6 +53,69 @@ TEST_RE = re.compile(
     r"phpunit|rspec|make\s+test|dotnet\s+test)\b"
 )
 
+# Runner summary lines: (regex, group that is passed, group that is failed).
+# Mirrors hooks/claude_gui_hook.py so the live tailer and the hook agree on
+# what a test run's output means.
+SUMMARIES = [
+    (re.compile(r"^# pass (\d+)\s*$.*?^# fail (\d+)", re.M | re.S), 1, 2),   # node:test / TAP
+    (re.compile(r"Tests:\s+(?:(\d+) failed, )?(?:\d+ skipped, )?(\d+) passed"), 2, 1),  # jest
+    (re.compile(r"Tests\s+(?:(\d+) failed \| )?(\d+) passed"), 2, 1),        # vitest
+    (re.compile(r"test result: \w+\. (\d+) passed; (\d+) failed"), 1, 2),    # cargo
+    (re.compile(r"(\d+) examples?, (\d+) failures?"), 1, 2),                 # rspec (total, failed)
+]
+PYTEST = re.compile(r"=+ (.*?(?:passed|failed|error).*?) in [\d.]+s")
+FAIL_NAMES = [
+    re.compile(r"^not ok \d+ - (.+)$", re.M),       # TAP
+    re.compile(r"^FAILED (\S+)", re.M),             # pytest -rf summary
+    re.compile(r"^\s*● (.+?)$", re.M),              # jest
+    re.compile(r"^--- FAIL: (\S+)", re.M),          # go
+    re.compile(r"^test (\S+) \.\.\. FAILED$", re.M),  # cargo
+]
+
+
+def parse_test_output(text):
+    """Pull passed/failed counts and up to 8 failing test names out of runner output."""
+    text = text or ""
+    passed = failed = None
+    for rx, gp, gf in SUMMARIES:
+        m = rx.search(text)
+        if m:
+            passed, failed = int(m.group(gp) or 0), int(m.group(gf) or 0)
+            if rx.pattern.startswith("(\\d+) examples"):
+                passed -= failed  # rspec reports a total
+            break
+    if passed is None:
+        m = PYTEST.search(text)
+        if m:
+            counts = dict((k, int(v)) for v, k in re.findall(r"(\d+) (passed|failed|errors?)", m.group(1)))
+            passed = counts.get("passed", 0)
+            failed = counts.get("failed", 0) + counts.get("error", 0) + counts.get("errors", 0)
+    if passed is None:
+        # pytest piped through `tail` loses the === separator lines, leaving a
+        # bare "1 failed, 17 passed in 0.2s" summary; pull the counts from that
+        # line directly.
+        m = re.search(r"((?:\d+ \w+, )*\d+ \w+) in [\d.]+s", text)
+        if m:
+            counts = dict((k, int(v)) for v, k in re.findall(r"(\d+) (passed|failed|errors?)", m.group(1)))
+            passed = counts.get("passed", 0)
+            failed = counts.get("failed", 0) + counts.get("error", 0) + counts.get("errors", 0)
+    names = []
+    for rx in FAIL_NAMES:
+        for n in rx.findall(text):
+            n = n[:120]
+            if n not in names:
+                names.append(n)
+    return passed, failed, names[:8]
+
+
+def _output_of(d):
+    """The tool's output text from a completion event's data dict."""
+    res = d.get("result")
+    if isinstance(res, dict):
+        return str(res.get("content", ""))
+    return str(res or "")
+
+
 # Shell commands that are just looking around (ls, grep, cat, git status...)
 # rather than doing work. Only these are dropped; builds, installs, servers
 # and anything else still count as "ran".
@@ -171,8 +234,83 @@ def humanize(text: str, limit: int = 160) -> str:
     return t
 
 
-def map_event(o: dict, session_id: str):
-    """Return a gui event dict for one session event, or None."""
+# Coverage reports the tailer understands, relative to the project root. After a
+# test command completes the freshest one (written in the last 15 minutes) is
+# reduced to covered/total lines per file and saved as .claude-gui/coverage.json,
+# which the viewer maps onto parts through their `paths` globs.
+COVERAGE_FILES = [
+    "coverage/coverage-summary.json", "coverage/coverage-final.json", "coverage/lcov.info",
+    "lcov.info", "coverage.json", "coverage.xml", "coverage/cobertura-coverage.xml",
+    "cover.out", "coverage.out",
+]
+
+
+def _read_coverage_report(path: Path) -> dict:
+    """Return {file: (covered, total)} for one report file."""
+    name = path.name
+    if name == "coverage-summary.json":  # istanbul
+        data = json.loads(path.read_text(encoding="utf-8"))
+        return {f: (v["lines"]["covered"], v["lines"]["total"])
+                for f, v in data.items() if f != "total" and isinstance(v, dict) and "lines" in v}
+    if name == "coverage.json":  # coverage.py
+        data = json.loads(path.read_text(encoding="utf-8"))
+        files = data.get("files") if isinstance(data, dict) else None
+        if not isinstance(files, dict):
+            raise ValueError("not a coverage.py report")
+        return {f: (v["summary"]["covered_lines"], v["summary"]["num_statements"]) for f, v in files.items()}
+    if name.endswith(".info"):  # lcov
+        out, cur, lf, lh = {}, None, 0, 0
+        for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+            line = line.strip()
+            if line.startswith("SF:"):
+                cur, lf, lh = line[3:], 0, 0
+            elif line.startswith("LF:"):
+                lf = int(line[3:] or 0)
+            elif line.startswith("LH:"):
+                lh = int(line[3:] or 0)
+            elif line == "end_of_record" and cur:
+                out[cur] = (lh, lf)
+                cur = None
+        return out
+    raise ValueError(f"unsupported coverage format: {name}")
+
+
+def collect_coverage(project: Path, gui: Path, max_age: int = 900) -> bool:
+    """Write .claude-gui/coverage.json from the freshest report, if there is one."""
+    now = time.time()
+    found = [project / f for f in COVERAGE_FILES if (project / f).is_file()]
+    found = [f for f in found if now - f.stat().st_mtime < max_age]
+    if not found:
+        return False
+    src = max(found, key=lambda f: f.stat().st_mtime)
+    files = {}
+    for f, (covered, total) in _read_coverage_report(src).items():
+        if total:
+            # Report keys are project-relative strings (coverage.py, istanbul, lcov).
+            # Absolute paths (some lcov variants) are made relative; outside-project
+            # paths are dropped rather than leaking into the shareable state.
+            p = Path(f)
+            if p.is_absolute():
+                try:
+                    p = p.relative_to(project)
+                except ValueError:
+                    continue
+            files[p.as_posix()] = [int(covered), int(total)]
+    if not files:
+        return False
+    out = {"t": now_iso(), "source": src.name, "files": files}
+    (gui / "coverage.json").write_text(json.dumps(out), encoding="utf-8")
+    return True
+
+
+def map_event(o: dict, session_id: str, pending: dict, project: Path = None, gui: Path = None):
+    """Return a gui event dict for one session event, or None.
+
+    ``pending`` maps a bash toolCallId to its start info so a test command's
+    completion can be matched to the command that produced it and its output
+    parsed into ok/passed/failed. ``project``/``gui`` enable coverage
+    collection after a test run.
+    """
     t = o.get("type")
     d = o.get("data") or {}
     ts = o.get("timestamp") or now_iso()
@@ -187,10 +325,40 @@ def map_event(o: dict, session_id: str):
         if etype == "run" and is_inspect(target):
             return None  # looking around, not doing work
         if etype == "run" and TEST_RE.search(target):
-            etype = "test"
+            # Remember the command so its completion can be parsed into a
+            # real result; emit test_start so the viewer shows it running.
+            pending[d.get("toolCallId")] = {
+                "target": shorten("test", target), "agent": "main",
+                "session": session_id,
+            }
+            if len(pending) > 500:
+                pending.clear()
+            return {**base, "type": "test_start", "target": shorten("test", target)}
         return {**base, "type": etype, "target": shorten(etype, target)}
 
     if t == "tool.execution_complete":
+        cid = d.get("toolCallId")
+        if cid in pending:
+            info = pending.pop(cid)
+            passed, failed, names = parse_test_output(_output_of(d))
+            # Tri-state: a real count decides; a crashed exit is a failure;
+            # anything else is unknown (None) and tagged runner: unsupported.
+            if failed is not None or passed is not None:
+                ok = not failed
+            elif not d.get("success"):
+                ok = False
+            else:
+                ok = None
+            ev = {**base, "type": "test", "target": info["target"],
+                  "ok": ok, "passed": passed, "failed": failed, "failures": names}
+            if ok is None:
+                ev["runner"] = "unsupported"
+            if project is not None and gui is not None:
+                try:
+                    collect_coverage(project, gui)
+                except Exception:
+                    pass  # a broken or unknown report never stops the run from being logged
+            return ev
         if d.get("success"):
             return None  # only failures are interesting
         return {**base, "type": "run", "ok": False,
@@ -233,6 +401,8 @@ def main() -> int:
         except ValueError:
             offset = 0
 
+    pending = {}  # toolCallId -> start info for in-flight test commands
+
     while True:
         try:
             if src.exists():
@@ -252,7 +422,8 @@ def main() -> int:
                             o = json.loads(line)
                         except json.JSONDecodeError:
                             continue
-                        ev = map_event(o, session_id)
+                        ev = map_event(o, session_id, pending,
+                                       project=Path(args.project).expanduser(), gui=gui)
                         if ev:
                             append_event(gui, ev)
                     state.parent.mkdir(parents=True, exist_ok=True)
