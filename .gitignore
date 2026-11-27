@@ -2,6 +2,10 @@ __pycache__/
 *.pyc
 .coverage
 coverage.json
+.pytest_cache/
+
+# vendored claude-gui clone (setup/bootstrap.py, has its own .git)
+vendor/
 
 # claude-gui runtime state (live viewer feed, not source)
 .claude-gui/
