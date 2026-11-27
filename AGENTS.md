@@ -2,6 +2,8 @@
 
 # AGENTS.md
 
+Tier: **mid** — explicit procedures. Follow the procedures and decision trees in the rules; run the provided scripts rather than improvising.
+
 ## core-testing
 
 # Core testing

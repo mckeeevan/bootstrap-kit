@@ -266,3 +266,104 @@ def test_lint_validates_stack_rule_frontmatter(tmp_path):
     res = lint.lint(root)
     assert not res.ok
     assert any("[1]" in e and "stacks/base" in e for e in res.errors)
+
+
+# --- Phase 7a: tier rendering (§4.6) ---------------------------------------
+
+def _sync_tier(tmp_path: Path, tier: str) -> Path:
+    root = make_repo(tmp_path,
+                     profile=f"tools: [claude, copilot, antigravity, qwen, codex]\n"
+                             f"model:\n  tier: {tier}\n")
+    sync.sync(root)
+    return root
+
+
+def test_three_tiers_emit_three_distinct_trees(tmp_path):
+    trees = {}
+    for i, tier in enumerate(["frontier", "mid", "small"]):
+        trees[tier] = snapshot(_sync_tier(tmp_path / f"t{i}", tier))
+    # Every root file differs across tiers (preamble + pointer vs body).
+    for rel in ["CLAUDE.md", "AGENTS.md", "GEMINI.md", "QWEN.md",
+                ".github/copilot-instructions.md"]:
+        assert trees["frontier"][rel] != trees["mid"][rel], rel
+        assert trees["frontier"][rel] != trees["small"][rel], rel
+        assert trees["mid"][rel] != trees["small"][rel], rel
+
+
+def test_frontier_is_pointer_only_mid_inlines_body(tmp_path):
+    frontier = _sync_tier(tmp_path / "f", "frontier")
+    mid = _sync_tier(tmp_path / "m", "mid")
+    f_claude = (frontier / "CLAUDE.md").read_text()
+    m_claude = (mid / "CLAUDE.md").read_text()
+    # Frontier: no inlined rule body, just a pointer at the canonical source.
+    assert "Do the thing." not in f_claude
+    assert "See `.agents/rules/always.md` (canonical source — read on demand)." in f_claude
+    # Mid: the full body is inlined.
+    assert "Do the thing." in m_claude
+    # Same for the AGENTS.md family.
+    f_agents = (frontier / "AGENTS.md").read_text()
+    m_agents = (mid / "AGENTS.md").read_text()
+    assert "Do the thing." not in f_agents
+    assert "Do the thing." in m_agents
+
+
+def test_tier_preamble_in_every_root_file(tmp_path):
+    root = _sync_tier(tmp_path, "small")
+    for rel in ["CLAUDE.md", "AGENTS.md", "GEMINI.md", "QWEN.md",
+                ".github/copilot-instructions.md"]:
+        assert "Tier: **small**" in (root / rel).read_text(), rel
+
+
+def test_all_three_tiers_lint_clean(tmp_path):
+    for i, tier in enumerate(["frontier", "mid", "small"]):
+        root = _sync_tier(tmp_path / f"t{i}", tier)
+        res = lint.lint(root)
+        assert res.ok, f"{tier}: {res.errors}"
+
+
+def test_tier_idempotent_second_run_zero_diff(tmp_path):
+    root = _sync_tier(tmp_path, "frontier")
+    first = snapshot(root)
+    sync.sync(root)
+    assert first == snapshot(root)
+
+
+def test_tier_min_filters_rules_above_tier(tmp_path):
+    # A rule with tier_min: frontier must not appear when tier is small.
+    root = make_repo(tmp_path, profile="tools: [claude]\nmodel:\n  tier: small\n")
+    (root / ".agents" / "rules" / "big.md").write_text(
+        "---\ntrigger: always_on\ndescription: \"Big model only.\"\n"
+        "tools: [claude]\ntier_min: frontier\n---\n\n# Big\n\n- Frontier only.\n")
+    sync.sync(root)
+    claude = (root / "CLAUDE.md").read_text()
+    assert "## big" not in claude
+    # Same rule appears at tier: frontier.
+    root2 = make_repo(tmp_path / "big", profile="tools: [claude]\nmodel:\n  tier: frontier\n")
+    (root2 / ".agents" / "rules" / "big.md").write_text(
+        "---\ntrigger: always_on\ndescription: \"Big model only.\"\n"
+        "tools: [claude]\ntier_min: frontier\n---\n\n# Big\n\n- Frontier only.\n")
+    sync.sync(root2)
+    # Present at frontier — as a pointer (frontier is pointer-only).
+    assert "See `.agents/rules/big.md` (canonical source — read on demand)." in (
+        root2 / "CLAUDE.md").read_text()
+
+
+# --- Phase 7c: read-only notice for tools without an emitter (§4.8) ---------
+
+def test_read_only_notice_for_tools_without_emitter(tmp_path, capsys):
+    root = make_repo(tmp_path)  # all five tools
+    sync.sync(root)
+    out = capsys.readouterr().out
+    for tool in ("antigravity", "qwen", "codex"):
+        assert f"degrade: {tool} has no events.jsonl emitter" in out, tool
+        assert "viewer is read-only in this tool" in out
+    # Tools with an emitter are not flagged.
+    assert "degrade: claude has no events.jsonl emitter" not in out
+    assert "degrade: copilot has no events.jsonl emitter" not in out
+
+
+def test_no_read_only_notice_when_only_emitter_tools(tmp_path, capsys):
+    root = make_repo(tmp_path, profile="tools: [claude, copilot]\n")
+    sync.sync(root)
+    out = capsys.readouterr().out
+    assert "read-only" not in out
